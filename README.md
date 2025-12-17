@@ -1,24 +1,25 @@
-# API Data Collector Service
+# Wildberries API Data Collector
 
-Laravel-сервис для сбора данных с API-эндпоинтов из GitHub-репозиториев и Postman-коллекций с сохранением в MySQL базу данных.
+Laravel-сервис для сбора данных с тестового API Wildberries и сохранения их в MySQL базу данных.
 
-## Функциональность
+## Описание
 
-- Импорт API-эндпоинтов из Postman-коллекций (JSON)
-- Импорт API-эндпоинтов из GitHub-репозиториев (OpenAPI/Swagger спецификации)
-- Автоматический сбор данных со всех активных эндпоинтов
-- Сохранение ответов API в базу данных
-- REST API для управления эндпоинтами и коллекциями
-- CLI-команды для автоматизации
+Сервис собирает данные с API по следующим эндпоинтам:
+- **Продажи (Sales)** - `/api/sales`
+- **Заказы (Orders)** - `/api/orders`
+- **Склады (Stocks)** - `/api/stocks`
+- **Доходы (Incomes)** - `/api/incomes`
 
-## Требования
+Все данные сохраняются в структурированные MySQL таблицы с поддержкой пагинации.
+
+## Технологии
 
 - PHP 8.2+
-- Composer
-- MySQL 5.7+ или MariaDB 10.3+
-- PHP расширения: mbstring, xml, curl, zip, mysql
+- Laravel 12
+- MySQL 8.0+
+- Docker / Docker Compose
 
-## Установка
+## Быстрый старт с Docker
 
 ### 1. Клонирование репозитория
 
@@ -27,22 +28,65 @@ git clone https://github.com/AlinShishkina/Test_bot.git
 cd Test_bot
 ```
 
-### 2. Установка зависимостей
+### 2. Настройка окружения
 
 ```bash
-composer install
+cp .env.example .env
 ```
 
-### 3. Настройка окружения
+Отредактируйте `.env` файл для Docker:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=wildberries
+DB_USERNAME=wb_user
+DB_PASSWORD=wb_password
+```
+
+### 3. Запуск контейнеров
 
 ```bash
+docker-compose up -d
+```
+
+### 4. Установка зависимостей и миграции
+
+```bash
+docker-compose exec app composer install
+docker-compose exec app php artisan key:generate
+docker-compose exec app php artisan migrate
+```
+
+### 5. Сбор данных
+
+```bash
+docker-compose exec app php artisan wb:collect --all
+```
+
+## Локальная установка (без Docker)
+
+### 1. Требования
+
+- PHP 8.2+
+- Composer
+- MySQL 5.7+ или MariaDB 10.3+
+- PHP расширения: pdo_mysql, mbstring, xml, curl, zip
+
+### 2. Установка
+
+```bash
+git clone https://github.com/AlinShishkina/Test_bot.git
+cd Test_bot
+composer install
 cp .env.example .env
 php artisan key:generate
 ```
 
-### 4. Настройка базы данных
+### 3. Настройка базы данных
 
-Отредактируйте файл `.env` и укажите данные для подключения к MySQL:
+Отредактируйте файл `.env`:
 
 ```env
 DB_CONNECTION=mysql
@@ -53,121 +97,190 @@ DB_USERNAME=your_username
 DB_PASSWORD=your_password
 ```
 
-### 5. Запуск миграций
+### 4. Миграции
 
 ```bash
 php artisan migrate
 ```
 
-### 6. Запуск сервера
+### 5. Запуск
 
 ```bash
 php artisan serve
 ```
 
-## Бесплатные хостинги MySQL
+## Конфигурация API
 
-Для разработки и тестирования рекомендуются следующие бесплатные сервисы:
+API настраивается через переменные окружения в `.env`:
 
-### 1. PlanetScale (Рекомендуется)
-- Сайт: https://planetscale.com
-- Бесплатный план: 5GB хранилища, 1 миллиард строк
-- Особенности: MySQL-совместимый, serverless
+```env
+# Wildberries API configuration
+WILDBERRIES_API_URL=http://109.73.206.144:6969
+WILDBERRIES_API_KEY=E6kUTYrYwZq2tN4QEtyzsbEBk3ie
+WILDBERRIES_API_LIMIT=500
+```
 
-### 2. Railway
-- Сайт: https://railway.app
-- Бесплатный план: $5 кредитов в месяц
-- Особенности: простая настройка, MySQL 8.0
+## CLI Команды
 
-### 3. Aiven (Trial)
-- Сайт: https://aiven.io
-- Пробный период: 30 дней бесплатно
-- Особенности: управляемый MySQL
+### Сбор всех данных
 
-### 4. FreeSQLDatabase
-- Сайт: https://www.freesqldatabase.com
-- Бесплатный план: 5MB
-- Особенности: для тестирования
+```bash
+php artisan wb:collect --all
+```
+
+### Сбор конкретной сущности
+
+```bash
+# Продажи
+php artisan wb:collect --entity=sales
+
+# Заказы
+php artisan wb:collect --entity=orders
+
+# Склады (только текущий день)
+php artisan wb:collect --entity=stocks
+
+# Доходы
+php artisan wb:collect --entity=incomes
+```
+
+### С указанием периода
+
+```bash
+php artisan wb:collect --all --date-from=2024-01-01 --date-to=2024-12-31
+```
+
+### С подробным выводом
+
+```bash
+php artisan wb:collect --all --verbose
+```
 
 ## Структура базы данных
 
-### Таблицы
+### Таблицы сущностей
 
 | Таблица | Описание |
 |---------|----------|
-| `api_endpoints` | API-эндпоинты для сбора данных |
-| `api_responses` | Сохраненные ответы API |
-| `postman_collections` | Импортированные Postman-коллекции |
-| `collection_items` | Элементы коллекций (папки и запросы) |
+| `sales` | Продажи |
+| `orders` | Заказы |
+| `stocks` | Остатки на складах |
+| `incomes` | Доходы |
 
-### Схема таблицы `api_endpoints`
-
-| Поле | Тип | Описание |
-|------|-----|----------|
-| id | bigint | Первичный ключ |
-| name | varchar(255) | Название эндпоинта |
-| method | varchar(10) | HTTP метод (GET, POST, PUT, PATCH, DELETE) |
-| url | varchar(255) | URL эндпоинта |
-| headers | json | HTTP заголовки |
-| query_params | json | Query параметры |
-| body | json | Тело запроса |
-| source | varchar(255) | Источник (manual, github, postman) |
-| source_reference | varchar(255) | Ссылка на источник |
-| description | text | Описание |
-| is_active | boolean | Активен ли эндпоинт |
-| created_at | timestamp | Дата создания |
-| updated_at | timestamp | Дата обновления |
-
-### Схема таблицы `api_responses`
+### Схема таблицы `sales`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
 | id | bigint | Первичный ключ |
-| api_endpoint_id | bigint | FK на api_endpoints |
-| status_code | int | HTTP статус код |
-| response_headers | json | Заголовки ответа |
-| response_body | longtext | Тело ответа |
-| response_time | float | Время ответа (секунды) |
-| collected_at | timestamp | Время сбора данных |
-| is_successful | boolean | Успешен ли запрос |
-| error_message | text | Сообщение об ошибке |
-| created_at | timestamp | Дата создания |
-| updated_at | timestamp | Дата обновления |
+| g_number | varchar(50) | Номер заказа |
+| date | date | Дата продажи |
+| last_change_date | date | Дата последнего изменения |
+| supplier_article | varchar(100) | Артикул поставщика |
+| tech_size | varchar(100) | Технический размер |
+| barcode | bigint | Штрихкод |
+| total_price | decimal(15,2) | Общая цена |
+| discount_percent | int | Процент скидки |
+| is_supply | boolean | Поставка |
+| is_realization | boolean | Реализация |
+| promo_code_discount | decimal(15,2) | Скидка по промокоду |
+| warehouse_name | varchar(255) | Название склада |
+| country_name | varchar(100) | Страна |
+| oblast_okrug_name | varchar(255) | Область/округ |
+| region_name | varchar(255) | Регион |
+| income_id | bigint | ID дохода |
+| sale_id | varchar(50) | ID продажи (уникальный) |
+| odid | varchar(50) | ODID |
+| spp | decimal(10,2) | СПП |
+| for_pay | decimal(15,2) | К выплате |
+| finished_price | decimal(15,2) | Финальная цена |
+| price_with_disc | decimal(15,2) | Цена со скидкой |
+| nm_id | bigint | Номенклатура ID |
+| subject | varchar(255) | Предмет |
+| category | varchar(255) | Категория |
+| brand | varchar(255) | Бренд |
+| is_storno | boolean | Сторно |
 
-### Схема таблицы `postman_collections`
+### Схема таблицы `orders`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
 | id | bigint | Первичный ключ |
-| name | varchar(255) | Название коллекции |
-| postman_id | varchar(255) | ID из Postman |
-| description | text | Описание |
-| schema_version | varchar(255) | Версия схемы |
-| variables | json | Переменные коллекции |
-| auth | json | Аутентификация |
-| raw_data | json | Исходные данные JSON |
-| source_url | varchar(255) | URL источника |
-| created_at | timestamp | Дата создания |
-| updated_at | timestamp | Дата обновления |
+| g_number | varchar(50) | Номер заказа |
+| date | datetime | Дата и время заказа |
+| last_change_date | date | Дата последнего изменения |
+| supplier_article | varchar(100) | Артикул поставщика |
+| tech_size | varchar(100) | Технический размер |
+| barcode | bigint | Штрихкод |
+| total_price | decimal(15,2) | Общая цена |
+| discount_percent | int | Процент скидки |
+| warehouse_name | varchar(255) | Название склада |
+| oblast | varchar(255) | Область |
+| income_id | bigint | ID дохода |
+| odid | varchar(50) | ODID |
+| nm_id | bigint | Номенклатура ID |
+| subject | varchar(255) | Предмет |
+| category | varchar(255) | Категория |
+| brand | varchar(255) | Бренд |
+| is_cancel | boolean | Отменён |
+| cancel_dt | datetime | Дата отмены |
 
-### Схема таблицы `collection_items`
+### Схема таблицы `stocks`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
 | id | bigint | Первичный ключ |
-| postman_collection_id | bigint | FK на postman_collections |
-| api_endpoint_id | bigint | FK на api_endpoints |
-| parent_id | bigint | FK на родительский элемент |
-| name | varchar(255) | Название элемента |
-| type | enum | Тип (folder, request) |
-| order | int | Порядок сортировки |
-| raw_data | json | Исходные данные |
-| created_at | timestamp | Дата создания |
-| updated_at | timestamp | Дата обновления |
+| date | date | Дата |
+| last_change_date | date | Дата последнего изменения |
+| supplier_article | varchar(100) | Артикул поставщика |
+| tech_size | varchar(100) | Технический размер |
+| barcode | bigint | Штрихкод |
+| quantity | int | Количество |
+| is_supply | boolean | Поставка |
+| is_realization | boolean | Реализация |
+| quantity_full | int | Полное количество |
+| warehouse_name | varchar(255) | Название склада |
+| in_way_to_client | int | В пути к клиенту |
+| in_way_from_client | int | В пути от клиента |
+| nm_id | bigint | Номенклатура ID |
+| subject | varchar(255) | Предмет |
+| category | varchar(255) | Категория |
+| brand | varchar(255) | Бренд |
+| sc_code | bigint | SC код |
+| price | decimal(15,2) | Цена |
+| discount | int | Скидка |
+
+### Схема таблицы `incomes`
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| id | bigint | Первичный ключ |
+| income_id | bigint | ID дохода (из API) |
+| number | varchar(100) | Номер |
+| date | date | Дата |
+| last_change_date | date | Дата последнего изменения |
+| supplier_article | varchar(100) | Артикул поставщика |
+| tech_size | varchar(100) | Технический размер |
+| barcode | bigint | Штрихкод |
+| quantity | int | Количество |
+| total_price | decimal(15,2) | Общая цена |
+| date_close | date | Дата закрытия |
+| warehouse_name | varchar(255) | Название склада |
+| nm_id | bigint | Номенклатура ID |
 
 ## API Endpoints
 
-### Управление API-эндпоинтами
+### API для сбора данных Wildberries
+
+Дополнительно к CLI командам, доступны API эндпоинты для интеграции:
+
+```
+POST /api/collect/all              - Сбор со всех эндпоинтов
+POST /api/collect/endpoint/{id}    - Сбор с конкретного эндпоинта
+GET  /api/responses                - Список сохранённых ответов
+GET  /api/stats                    - Статистика
+```
+
+### Управление API-эндпоинтами (legacy)
 
 ```
 GET    /api/endpoints              - Список всех эндпоинтов
@@ -177,122 +290,83 @@ PUT    /api/endpoints/{id}         - Обновление эндпоинта
 DELETE /api/endpoints/{id}         - Удаление эндпоинта
 ```
 
-### Управление Postman-коллекциями
+## Бесплатные MySQL хостинги
 
-```
-GET    /api/collections            - Список всех коллекций
-POST   /api/collections            - Импорт коллекции (json или url)
-GET    /api/collections/{id}       - Получение коллекции
-PUT    /api/collections/{id}       - Обновление коллекции
-DELETE /api/collections/{id}       - Удаление коллекции
-```
+Для развёртывания базы данных рекомендуются:
 
-### Сбор данных
+### PlanetScale (Рекомендуется)
+- Сайт: https://planetscale.com
+- Бесплатный план: 5GB хранилища
+- Особенности: MySQL-совместимый, serverless
 
-```
-POST   /api/collect/all            - Сбор со всех активных эндпоинтов
-POST   /api/collect/endpoint/{id}  - Сбор с конкретного эндпоинта
-POST   /api/collect/github         - Импорт из GitHub репозитория
-GET    /api/responses              - Список ответов
-GET    /api/stats                  - Статистика
-```
+### Railway
+- Сайт: https://railway.app
+- Бесплатный план: $5 кредитов в месяц
+- Особенности: простая настройка, MySQL 8.0
 
-## CLI Команды
+### db4free.net
+- Сайт: https://www.db4free.net
+- Бесплатный план: тестовая база данных
+- Особенности: для разработки и тестирования
 
-### Импорт Postman-коллекции
-
-```bash
-# Из файла
-php artisan postman:import --file=/path/to/collection.json
-
-# Из URL
-php artisan postman:import --url=https://example.com/collection.json
-
-# С подробным выводом
-php artisan postman:import --file=/path/to/collection.json --verbose
-```
-
-### Сбор данных с API
-
-```bash
-# Сбор со всех активных эндпоинтов
-php artisan api:collect --all
-
-# Сбор с конкретного эндпоинта
-php artisan api:collect --endpoint=1
-
-# С подробным выводом
-php artisan api:collect --all --verbose
-```
-
-## Примеры использования
-
-### Создание эндпоинта через API
-
-```bash
-curl -X POST http://localhost:8000/api/endpoints \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "JSONPlaceholder Posts",
-    "method": "GET",
-    "url": "https://jsonplaceholder.typicode.com/posts",
-    "description": "Get all posts from JSONPlaceholder API"
-  }'
-```
-
-### Импорт Postman-коллекции через API
-
-```bash
-curl -X POST http://localhost:8000/api/collections \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://www.getpostman.com/collections/your-collection-id"
-  }'
-```
-
-### Сбор данных через API
-
-```bash
-# Сбор со всех активных эндпоинтов
-curl -X POST http://localhost:8000/api/collect/all
-
-# Получение статистики
-curl http://localhost:8000/api/stats
-```
-
-### Импорт из GitHub через API
-
-```bash
-curl -X POST http://localhost:8000/api/collect/github \
-  -H "Content-Type: application/json" \
-  -d '{
-    "owner": "owner-name",
-    "repo": "repo-name",
-    "file_path": "openapi.json"
-  }'
-```
+### FreeSQLDatabase
+- Сайт: https://www.freesqldatabase.com
+- Бесплатный план: 5MB
+- Особенности: для тестирования
 
 ## Структура проекта
 
 ```
 app/
 ├── Console/Commands/
-│   ├── CollectApiData.php        # Команда сбора данных
-│   └── ImportPostmanCollection.php # Команда импорта коллекций
+│   ├── CollectApiData.php           # Команда сбора данных (legacy)
+│   ├── CollectWildberriesData.php   # Команда сбора данных WB
+│   └── ImportPostmanCollection.php  # Импорт Postman коллекций
 ├── Http/Controllers/Api/
-│   ├── ApiEndpointController.php  # CRUD для эндпоинтов
-│   ├── DataCollectorController.php # Сбор данных
-│   └── PostmanCollectionController.php # CRUD для коллекций
+│   ├── ApiEndpointController.php    # CRUD для эндпоинтов
+│   ├── DataCollectorController.php  # Сбор данных
+│   └── PostmanCollectionController.php
 ├── Models/
-│   ├── ApiEndpoint.php           # Модель эндпоинта
-│   ├── ApiResponse.php           # Модель ответа
-│   ├── CollectionItem.php        # Модель элемента коллекции
-│   └── PostmanCollection.php     # Модель коллекции
+│   ├── Sale.php                     # Модель продаж
+│   ├── Order.php                    # Модель заказов
+│   ├── Stock.php                    # Модель остатков
+│   ├── Income.php                   # Модель доходов
+│   └── ...
 └── Services/
-    ├── ApiCollectorService.php   # Сервис сбора данных
-    ├── GitHubApiService.php      # Сервис работы с GitHub
-    └── PostmanCollectionService.php # Сервис Postman-коллекций
+    ├── WildberriesApiService.php    # Сервис WB API
+    ├── ApiCollectorService.php      # Generic API collector
+    └── ...
+
+database/migrations/
+├── 2025_12_17_090000_create_sales_table.php
+├── 2025_12_17_090001_create_orders_table.php
+├── 2025_12_17_090002_create_stocks_table.php
+└── 2025_12_17_090003_create_incomes_table.php
+
+docker/
+└── nginx/
+    └── nginx.conf
+
+docker-compose.yml
+Dockerfile
 ```
+
+## API Источники
+
+### GitHub репозиторий
+- https://github.com/cy322666/wb-api/blob/master/README.md
+
+### Postman коллекция
+- https://www.postman.com/cy322666/workspace/app-api-test/overview
+
+### Параметры API
+
+- **Хост**: `109.73.206.144:6969`
+- **Ключ авторизации**: `E6kUTYrYwZq2tN4QEtyzsbEBk3ie`
+- **Формат даты**: `Y-m-d`
+- **Формат даты и времени**: `Y-m-d H:i:s`
+- **Лимит по умолчанию**: 500 записей
+- **Пагинация**: параметр `page`
 
 ## Тестирование
 

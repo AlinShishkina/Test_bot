@@ -39,4 +39,10 @@ return [
         'token' => env('GITHUB_TOKEN'),
     ],
 
+    'wildberries' => [
+        'base_url' => env('WILDBERRIES_API_URL', 'http://109.73.206.144:6969'),
+        'api_key' => env('WILDBERRIES_API_KEY', 'E6kUTYrYwZq2tN4QEtyzsbEBk3ie'),
+        'limit' => env('WILDBERRIES_API_LIMIT', 500),
+    ],
+
 ];
